@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Strength Visualizer</title>
+    <style>
+        :root {
+            --weak-color: #ff4d4d;
+            --medium-color: #ffba08;
+            --strong-color: #52b788;
+            --very-strong-color: #38b000;
+            --primary-dark: #1b263b;
+            --primary-light: #e0e1dd;
+            --accent: #415a77;
+            --background: #0d1b2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--primary-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--primary-dark);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+            color: var(--primary-light);
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .password-input-container {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--accent);
+            color: var(--primary-light);
+            font-size: 1.2rem;
+            outline: none;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary-light);
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .toggle-password:hover {
+            opacity: 1;
+        }
+
+        .strength-container {
+            margin-bottom: 2rem;
+        }
+
+        .strength-meter {
+            height: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            margin: 1rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .strength-meter .meter-fill {
+            height: 100%;
+            width: 0;
+            border-radius: 5px;
+            background-color: var(--weak-color);
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        .strength-label {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background-color: var(--accent);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-title {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .info-container {
+            background-color: var(--accent);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-title {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .info-title:before {
+            content: "i";
+            position: absolute;
+            left: 0;
+            top: 0;
+            background-color: var(--primary-light);
+            color: var(--accent);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-style: italic;
+            font-weight: bold;
+        }
+
+        .info-content {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .criterias-container {
+            margin-top: 1.5rem;
+        }
+
+        .criteria {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .criteria.met {
+            opacity: 1;
+        }
+
+        .criteria-icon {
+            margin-right: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .criteria.met .criteria-icon {
+            color: var(--strong-color);
+        }
+
+        .visualizer-container {
+            width: 100%;
+            max-width: 800px;
+            height: 200px;
+            background-color: var(--primary-dark);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .particles-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            animation: float 10s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) translateX(0);
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px);
+            }
+            50% {
+                transform: translateY(0) translateX(20px);
+            }
+            75% {
+                transform: translateY(20px) translateX(10px);
+            }
+        }
+
+        .brute-force-container {
+            position: relative;
+            height: 60px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .brute-force-progress {
+            height: 100%;
+            width: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            transition: width 0.3s ease;
+        }
+
+        .brute-force-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            z-index: 2;
+        }
+
+        .entropy-bar {
+            display: flex;
+            margin-top: 1rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            height: 30px;
+        }
+
+        .entropy-segment {
+            height: 100%;
+            flex: 1;
+            opacity: 0.3;
+            transition: opacity 0.5s ease;
+        }
+
+        .entropy-segment:nth-child(1) { background-color: #ff595e; }
+        .entropy-segment:nth-child(2) { background-color: #ffca3a; }
+        .entropy-segment:nth-child(3) { background-color: #8ac926; }
+        .entropy-segment:nth-child(4) { background-color: #1982c4; }
+        .entropy-segment:nth-child(5) { background-color: #6a4c93; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 1.5rem;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Strength Visualizer</h1>
+        <div class="password-input-container">
+            <input type="password" id="passwordInput" class="password-input" placeholder="Enter your password">
+            <button id="togglePassword" class="toggle-password">👁️</button>
+        </div>
+        
+        <div class="strength-container">
+            <div class="strength-meter">
+                <div class="meter-fill" id="strengthMeter"></div>
+            </div>
+            <div class="strength-label" id="strengthLabel">Password Strength</div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-title">Entropy</div>
+                <div class="stat-value" id="entropyValue">0 bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Crack Time Estimate</div>
+                <div class="stat-value" id="crackTimeValue">Instant</div>
+            </div>
+        </div>
+        
+        <div class="criterias-container">
+            <div class="criteria" id="lengthCriteria">
+                <span class="criteria-icon">✓</span>
+                <span>8+ characters length</span>
+            </div>
+            <div class="criteria" id="uppercaseCriteria">
+                <span class="criteria-icon">✓</span>
+                <span>Contains uppercase letters</span>
+            </div>
+            <div class="criteria" id="lowercaseCriteria">
+                <span class="criteria-icon">✓</span>
+                <span>Contains lowercase letters</span>
+            </div>
+            <div class="criteria" id="numberCriteria">
+                <span class="criteria-icon">✓</span>
+                <span>Contains numbers</span>
+            </div>
+            <div class="criteria" id="specialCriteria">
+                <span class="criteria-icon">✓</span>
+                <span>Contains special characters</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="visualizer-container">
+        <div class="particles-container" id="particlesContainer"></div>
+        <div class="brute-force-container">
+            <div class="brute-force-text" id="bruteForceText">Brute-force simulation</div>
+            <div class="brute-force-progress" id="bruteForceProgress"></div>
+        </div>
+        <div class="entropy-bar">
+            <div class="entropy-segment"></div>
+            <div class="entropy-segment"></div>
+            <div class="entropy-segment"></div>
+            <div class="entropy-segment"></div>
+            <div class="entropy-segment"></div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="info-container">
+            <h3 class="info-title">What is Password Entropy?</h3>
+            <div class="info-content">
+                <p>Password entropy is a measurement of how unpredictable a password is. The higher the entropy, the more secure the password. It's measured in bits and calculated based on the character set used and the length of the password.</p>
+                <p>A strong password should have at least 60 bits of entropy to be considered resistant to brute-force attacks.</p>
+            </div>
+        </div>
+        
+        <div class="info-container">
+            <h3 class="info-title">What is a Brute-Force Attack?</h3>
+            <div class="info-content">
+                <p>A brute-force attack is when an attacker tries every possible combination of characters until they find the correct password. The time it takes to crack a password using this method depends on the length and complexity of the password.</p>
+                <p>The visualization above shows a simulated brute-force attack. The longer your password and the more character types you use, the slower the progress bar will move.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const passwordInput = document.getElementById('passwordInput');
+        const togglePassword = document.getElementById('togglePassword');
+        const strengthMeter = document.getElementById('strengthMeter');
+        const strengthLabel = document.getElementById('strengthLabel');
+        const entropyValue = document.getElementById('entropyValue');
+        const crackTimeValue = document.getElementById('crackTimeValue');
+        const lengthCriteria = document.getElementById('lengthCriteria');
+        const uppercaseCriteria = document.getElementById('uppercaseCriteria');
+        const lowercaseCriteria = document.getElementById('lowercaseCriteria');
+        const numberCriteria = document.getElementById('numberCriteria');
+        const specialCriteria = document.getElementById('specialCriteria');
+        const particlesContainer = document.getElementById('particlesContainer');
+        const bruteForceProgress = document.getElementById('bruteForceProgress');
+        const bruteForceText = document.getElementById('bruteForceText');
+        const entropySegments = document.querySelectorAll('.entropy-segment');
+
+        // Toggle password visibility
+        togglePassword.addEventListener('click', () => {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                togglePassword.textContent = '🔒';
+            } else {
+                passwordInput.type = 'password';
+                togglePassword.textContent = '👁️';
+            }
+        });
+
+        // Create particles for visualization
+        function createParticles(count, color) {
+            particlesContainer.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // Random properties
+                const size = Math.random() * 12 + 3;
+                const posX = Math.random() * 100;
+                const posY = Math.random() * 100;
+                const delay = Math.random() * 5;
+                const opacity = Math.random() * 0.6 + 0.2;
+                
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${posX}%`;
+                particle.style.top = `${posY}%`;
+                particle.style.backgroundColor = color;
+                particle.style.opacity = opacity;
+                particle.style.animationDelay = `${delay}s`;
+                particle.style.animationDuration = `${Math.random() * 10 + 5}s`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Calculate password strength
+        function calculatePasswordStrength(password) {
+            // Check criteria
+            const hasLength = password.length >= 8;
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasLowercase = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecial = /[^A-Za-z0-9]/.test(password);
+            
+            // Update criteria indicators
+            lengthCriteria.classList.toggle('met', hasLength);
+            uppercaseCriteria.classList.toggle('met', hasUppercase);
+            lowercaseCriteria.classList.toggle('met', hasLowercase);
+            numberCriteria.classList.toggle('met', hasNumber);
+            specialCriteria.classList.toggle('met', hasSpecial);
+            
+            // Calculate character set size
+            let charSetSize = 0;
+            if (hasLowercase) charSetSize += 26;
+            if (hasUppercase) charSetSize += 26;
+            if (hasNumber) charSetSize += 10;
+            if (hasSpecial) charSetSize += 33; // Common special characters
+            
+            // Calculate entropy
+            const entropy = password.length * Math.log2(charSetSize || 1);
+            
+            // Determine strength based on entropy
+            let strength = 0;
+            let strengthText = 'Very Weak';
+            let color = 'var(--weak-color)';
+            let particles = 5;
+            
+            if (entropy > 80) {
+                strength = 100;
+                strengthText = 'Very Strong';
+                color = 'var(--very-strong-color)';
+                particles = 30;
+            } else if (entropy > 60) {
+                strength = 80;
+                strengthText = 'Strong';
+                color = 'var(--strong-color)';
+                particles = 20;
+            } else if (entropy > 40) {
+                strength = 60;
+                strengthText = 'Medium';
+                color = 'var(--medium-color)';
+                particles = 15;
+            } else if (entropy > 20) {
+                strength = 40;
+                strengthText = 'Weak';
+                color = 'var(--weak-color)';
+                particles = 10;
+            }
+            
+            // Update UI
+            strengthMeter.style.width = `${strength}%`;
+            strengthMeter.style.backgroundColor = color;
+            strengthLabel.textContent = strengthText;
+            strengthLabel.style.color = color;
+            entropyValue.textContent = `${Math.round(entropy)} bits`;
+            
+            // Update crack time estimate
+            updateCrackTimeEstimate(entropy);
+            
+            // Update particles
+            createParticles(particles, color);
+            
+            // Update brute force simulation
+            updateBruteForceSimulation(entropy);
+            
+            // Update entropy segments
+            updateEntropySegments(entropy);
+            
+            return entropy;
+        }
+
+        // Update crack time estimate
+        function updateCrackTimeEstimate(entropy) {
+            // Assume 10 billion guesses per second (modern computer)
+            const guessesPerSecond = 10000000000;
+            const possibleCombinations = Math.pow(2, entropy);
+            const secondsToCrack = possibleCombinations / (2 * guessesPerSecond);
+            
+            let crackTimeText;
+            
+            if (secondsToCrack < 1) {
+                crackTimeText = 'Instant';
+            } else if (secondsToCrack < 60) {
+                crackTimeText = `${Math.round(secondsToCrack)} seconds`;
+            } else if (secondsToCrack < 3600) {
+                crackTimeText = `${Math.round(secondsToCrack / 60)} minutes`;
+            } else if (secondsToCrack < 86400) {
+                crackTimeText = `${Math.round(secondsToCrack / 3600)} hours`;
+            } else if (secondsToCrack < 31536000) {
+                crackTimeText = `${Math.round(secondsToCrack / 86400)} days`;
+            } else if (secondsToCrack < 31536000 * 100) {
+                crackTimeText = `${Math.round(secondsToCrack / 31536000)} years`;
+            } else if (secondsToCrack < 31536000 * 1000) {
+                crackTimeText = `${Math.round(secondsToCrack / (31536000 * 100))} centuries`;
+            } else {
+                crackTimeText = 'Millions of years';
+            }
+            
+            crackTimeValue.textContent = crackTimeText;
+        }
+
+        // Update brute force simulation
+        function updateBruteForceSimulation(entropy) {
+            // Scale the progress based on entropy
+            // Lower entropy = faster progress
+            let progress = 0;
+            if (entropy <= 0) {
+                progress = 100;
+            } else if (entropy < 20) {
+                progress = 100 - (entropy * 5);
+            } else if (entropy < 40) {
+                progress = 20 - ((entropy - 20) * 0.5);
+            } else if (entropy < 60) {
+                progress = 10 - ((entropy - 40) * 0.2);
+            } else {
+                progress = 5 - ((entropy - 60) * 0.05);
+                if (progress < 0) progress = 0;
+            }
+            
+            bruteForceProgress.style.width = `${progress}%`;
+            
+            if (entropy <= 20) {
+                bruteForceText.textContent = 'Password cracked instantly!';
+                bruteForceProgress.style.backgroundColor = 'rgba(255, 77, 77, 0.5)';
+            } else if (entropy <= 40) {
+                bruteForceText.textContent = 'Password cracked quickly';
+                bruteForceProgress.style.backgroundColor = 'rgba(255, 186, 8, 0.5)';
+            } else if (entropy <= 60) {
+                bruteForceText.textContent = 'Brute-force in progress...';
+                bruteForceProgress.style.backgroundColor = 'rgba(82, 183, 136, 0.5)';
+            } else {
+                bruteForceText.textContent = 'Brute-force attempt failed';
+                bruteForceProgress.style.backgroundColor = 'rgba(56, 176, 0, 0.5)';
+            }
+        }
+
+        // Update entropy segments
+        function updateEntropySegments(entropy) {
+            const thresholds = [20, 40, 60, 80, 100];
+            
+            entropySegments.forEach((segment, index) => {
+                if (entropy >= thresholds[index]) {
+                    segment.style.opacity = 1;
+                } else {
+                    segment.style.opacity = 0.3;
+                }
+            });
+        }
+
+        // Password input event
+        passwordInput.addEventListener('input', () => {
+            const password = passwordInput.value;
+            calculatePasswordStrength(password);
+        });
+
+        // Initial setup
+        createParticles(5, 'var(--weak-color)');
+    </script>
+</body>
+</html>
